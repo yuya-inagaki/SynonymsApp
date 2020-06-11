@@ -1,4 +1,6 @@
 library(shiny)
+library(shinyjs)
+library(DT)
 
 shinyUI(
   fluidPage(
@@ -13,16 +15,18 @@ shinyUI(
         verbatimTextOutput("value"),
         actionButton("submit", "この文章の解析を実行する"),
         tags$hr(),
-        p("Created by yuya-inagaki 2020"),
+        p("yuya-inagaki 2020"),
       ),
       mainPanel(
         tabsetPanel(type = "tabs",
           tabPanel("単語一覧",
             tags$br(),
-            p("文章に出現する単語を出現数順に表示します(最大100個)"),
-            tableOutput('words_list')
+            DT::dataTableOutput('words_list')
           ),
-          tabPanel("解析結果", tableOutput("result"))
+          tabPanel("解析結果",
+            tags$br(),
+            DT::dataTableOutput("result")
+          )
         )
       )
     )

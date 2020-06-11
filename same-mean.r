@@ -2,7 +2,7 @@ library(RSQLite) #RSQLite
 library(dplyr)
 
 drv <- dbDriver("SQLite")
-con <- dbConnect(drv, dbname ="wnjpn.db") #DB読み込み(wnjpn.db)
+con <- dbConnect(drv, dbname ="db/wnjpn.db") #DB読み込み(wnjpn.db)
 
 
 checkwords <- function(x){

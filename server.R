@@ -1,4 +1,5 @@
 library(RMeCab)
+library(stringr)
 
 server = function(input, output, session) {
     observeEvent(input$file, {
@@ -23,28 +24,42 @@ server = function(input, output, session) {
             word <- word[order(word$Freq, decreasing=T),]
             #無駄な単語の削除
             word <- subset(word, Term!="ー"&Term!="("&Term!=")"&Term!="!!"&Term!="!")
-            output$words_list <- renderTable(head(word,n=100))
+            words_list <- word
             
             i=1	#単語の番号i
-            export = as.list(NULL)
-            source("same-mean.r") #類義語探索プログラムsame-mean.rを取得
-            print(nrow(word))
-            while(i<=nrow(word)){ #単語の番号i
-                print(word[i,1])
-                same_words <- checkwords(word[i,1]) #類義語検索(same-mean.rを使用)
-                
+            export <- data.frame(matrix(rep(NA, 4), nrow=1))[numeric(0), ]
+            colnames(export) <- c("Word", "Count", "SynonymsCount" ,"Synonyms")
+            #類義語探索プログラムsame-mean.rを取得
+            source("same-mean.r")
+            words_length = nrow(word)
+            while(i<=words_length){ #単語の番号i
+                check_word <- word[i,1]
+                #類義語検索(same-mean.rを使用)
+                same_words <- checkwords(check_word)
+                print(same_words)
+                synonyms_count = 1
+                synonyms_list = list()
                 if(same_words[1] != "Error"){ #類義語が辞書にある場合
                     j=1 #類義語のリスト番号j
                     while( j <= length(same_words) ){
-                        k=1
-                        while(k<=N){ #検索中の単語の番号k
-                            if(word[i,1]!=same_words[j]){ #同義語と元が同じ時を覗く
-                                if(word[k,1]==same_words[j]){ #j番目の類義語がリスト(k番目)から発見できた時
-                                    print("類義語！！！")
-                                    export[i] <- word[k,1]
-                                    word[i,4]<-word[i,4]+word[k,4] #同義語の場合最初に現れた言語にFreqを合算
-                                    word[k,]<-NA	#同義語（後者）を削除
-                                    word<-na.omit(word)	#同義語（後者）を削除
+                        k=i
+                        #検索中の単語の番号k
+                        while(k<=words_length){
+                            #同義語と元が同じ時を覗く
+                            if(check_word!=same_words[j]){
+                                #j番目の類義語がリスト(k番目)から発見できた時
+                                if(word[k,1]==same_words[j]){
+                                    if(synonyms_count==1){
+                                        synonyms_list[1] <- check_word
+                                    }
+                                    synonyms_list[synonyms_count+1] <- word[k,1]
+                                    synonyms_count <- synonyms_count + 1
+                                    #同義語の場合最初に現れた言語にFreqを合算
+                                    word[i,4]<-word[i,4]+word[k,4]
+                                    #同義語（後者）を削除
+                                    word[k,]<-NA
+                                    word<-na.omit(word)
+                                    words_length <- words_length-1
                                 }
                             }
                             k <- k + 1
@@ -52,11 +67,28 @@ server = function(input, output, session) {
                         j <- j + 1
                     }
                 }
+                # 類義語のexport
+                export[i,]=c(check_word, word[i,4], synonyms_count, str_c(synonyms_list, collapse = ", "))
                 i <- i + 1
             }
             
             word <- head(word, n=N) #最終確認（全プロセス終了）
-            output$result <- renderTable(export.table)
+            output$result <- DT::renderDataTable(export, 
+                extensions = c('Buttons'), 
+                options = list(lengthMenu = c(10, 25, 50, 100),
+                    dom = 'Blfrtip',
+                    pageLength = 10, 
+                    buttons = c('csv', 'excel', 'pdf')
+                )
+            )
+            output$words_list <- DT::renderDataTable(words_list, 
+                extensions = c('Buttons'), 
+                options = list(lengthMenu = c(10, 25, 50, 100),
+                    dom = 'Blfrtip',
+                    pageLength = 10, 
+                    buttons = c('csv', 'excel', 'pdf')
+                )
+            )
         }
     })
 }
